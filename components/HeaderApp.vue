@@ -284,10 +284,7 @@ const menuItems = [
   box-shadow: none !important;
 }
 
-/* .el-dropdown:focus,
-.el-dropdown:hover {
-  outline: none !important;
-  border: none !important;
-  box-shadow: none !important;
-} */
+.el-header {
+  height: 40px !important;
+}
 </style>
