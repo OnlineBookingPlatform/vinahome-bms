@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import type { FormInstance, FormRules } from "element-plus";
-import type { AuthType } from "@/types/AuthType";
+import { ElMessage, type FormInstance, type FormRules } from "element-plus";
+import type { LoginType } from "@/types/AuthType";
+import { bmsLoginAPI } from "../api/authAPI";
 const ruleFormRef = ref<FormInstance>();
-const form = reactive<AuthType>({
+const form = reactive<LoginType>({
   username: "",
   password: "",
 });
-const rules = reactive<FormRules<AuthType>>({
+const rules = reactive<FormRules<LoginType>>({
   username: [
     { required: true, message: "Vui lòng nhập tài khoản", trigger: "blur" },
     { min: 3, max: 50, message: "Tài khoản không hợp lệ", trigger: "blur" },
@@ -16,6 +17,22 @@ const rules = reactive<FormRules<AuthType>>({
     { min: 3, max: 50, message: "Mật khẩu không hợp lệ", trigger: "blur" },
   ],
 });
+const onSubmit = async (formEl: FormInstance | undefined) => {
+  if (!formEl) return;
+  
+  try {
+    await formEl.validate();
+    console.log("Form Login:", form);
+    const response = await bmsLoginAPI(form);
+    
+    ElMessage.success("Đăng nhập thành công!");
+    console.log("Login Success:", response);
+
+  } catch (error) {
+    ElMessage.error("Tài khoản hoặc mật khẩu không đúng!");
+    console.error("Login Failed:", error);
+  }
+};
 </script>
 <template>
   <el-form

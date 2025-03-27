@@ -1,4 +1,4 @@
-export interface AuthType {
+export interface LoginType {
     username: string,
     password: string,
 }
