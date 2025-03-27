@@ -1,17 +1,17 @@
 export interface AccountType {
-    id: number;
-    username: string;
-    password: string;
+    _id: string | null;
+    username: string | null;
+    password: string | null;
     status: boolean;
-    name: string;
-    phone: string;
-    email: string;
+    name: string | null;
+    phone: string | null;
+    email: string | null;
     date_birth: null | Date;
-    citizen_id: string;
-    gender: number;
+    citizen_id: string | null;
+    gender: number | null;
     role: number | null;
     license_class: string | null;
     license_expiry_date: null | Date;
-    area: string;
+    area: string | null;
     company_id: number;
 }
