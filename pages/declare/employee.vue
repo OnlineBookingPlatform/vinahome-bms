@@ -6,7 +6,6 @@ import {
   type FormInstance,
   type FormRules,
 } from "element-plus";
-import { tr } from "element-plus/es/locales.mjs";
 import { createAccountAPI, deleteAccountAPI, getAllAccountByCompanyAPI, updateAccountAPI } from "~/api/employeeAPI";
 import TitleSectionDeclare from "~/components/UI/TitleSectionDeclare.vue";
 import type { AccountType } from "~/types/AccountType";

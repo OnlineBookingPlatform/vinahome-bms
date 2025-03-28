@@ -19,20 +19,31 @@ const rules = reactive<FormRules<LoginType>>({
 });
 const onSubmit = async (formEl: FormInstance | undefined) => {
   if (!formEl) return;
-  
+
   try {
     await formEl.validate();
     console.log("Form Login:", form);
+
     const response = await bmsLoginAPI(form);
-    
+    if (response.status !== 200) {
+      ElMessage.error("Đăng nhập thất bại! Vui lòng thử lại.");
+      return;
+    }
     ElMessage.success("Đăng nhập thành công!");
     console.log("Login Success:", response);
-
-  } catch (error) {
-    ElMessage.error("Tài khoản hoặc mật khẩu không đúng!");
+  } catch (error: any) {
     console.error("Login Failed:", error);
+    if (error.password && Array.isArray(error.password)) {
+      ElMessage.error(error.password[0].message);
+    } else if (error.message) {
+      ElMessage.error(error.message);
+    } else {
+      ElMessage.error("Đăng nhập thất bại! Vui lòng thử lại.");
+    }
   }
 };
+
+
 </script>
 <template>
   <el-form
