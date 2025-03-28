@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { Plus } from "@element-plus/icons-vue";
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
-import { createAccountAPI } from "~/api/employeeAPI";
+import { Plus, Delete, Edit } from "@element-plus/icons-vue";
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules,
+} from "element-plus";
+import { tr } from "element-plus/es/locales.mjs";
+import { createAccountAPI, deleteAccountAPI, getAllAccountByCompanyAPI, updateAccountAPI } from "~/api/employeeAPI";
 import TitleSectionDeclare from "~/components/UI/TitleSectionDeclare.vue";
 import type { AccountType } from "~/types/AccountType";
 const optionsRole = [
@@ -17,11 +23,17 @@ const optionsLicenseClass = [
   { value: "D", label: "Hạng D" },
   { value: "E", label: "Hạng E" },
 ];
+
+const companyId = "41";
+
 const dialogVisible = ref(false);
 const ruleFormRef = ref<FormInstance>();
 const isEditMode = ref(false);
+const tableData = ref<AccountType[]>([]);
+const loading = ref<boolean>(false);
+const search = ref("");
 const account = reactive<AccountType>({
-  _id: null,
+  _id: "",
   username: null,
   password: null,
   status: false,
@@ -32,10 +44,11 @@ const account = reactive<AccountType>({
   citizen_id: null,
   gender: 1,
   role: null,
+  note: null,
   license_class: null,
   license_expiry_date: null,
   area: null,
-  company_id: 41,
+  company_id: Number(companyId),
 });
 const rules = reactive<FormRules<AccountType>>({
   username: [
@@ -70,24 +83,48 @@ const handleClose = (done: () => void) => {
 const handleSubmit = () => {
   ruleFormRef.value?.validate(async (valid) => {
     if (valid) {
+      loading.value = true; // Bắt đầu loading
       if (isEditMode.value) {
-        // Chế độ sửa
-        console.log("Edit")
+        console.log("Edit");
+        console.log(account);
+        try {
+          const response = await updateAccountAPI(account);
+          if (response.result) {
+            ElMessage.success("Cập nhật tài khoản thành công!");
+            console.log(response.result);
+            const index = tableData.value.findIndex(
+              (item) => item._id === response.result._id
+            );
+            if (index !== -1) {
+              tableData.value[index] = response.result;
+            }
+          } else {
+            ElMessage.error(response.message || "Có lỗi xảy ra!");
+          }
+        } catch (error) {
+          ElMessage.error("Không thể cập nhật tài khoản, vui lòng thử lại!");
+        } finally {
+          loading.value = false;
+          dialogVisible.value = false;
+          resetForm();
+        }
       } else {
-        // Chế độ thêm
-        console.log("Add")
-
+        console.log("Add");
         try {
           const response = await createAccountAPI(account);
           if (response.result) {
             ElMessage.success("Tạo tài khoản thành công!");
-            console.log(response.result)
-            // resetForm(); // Reset form sau khi tạo thành công
+            console.log(response.result);
+            tableData.value.push(response.result);
           } else {
             ElMessage.error(response.message || "Có lỗi xảy ra!");
           }
         } catch (error) {
           ElMessage.error("Không thể tạo tài khoản, vui lòng thử lại!");
+        } finally {
+          loading.value = false;
+          dialogVisible.value = false;
+          resetForm();
         }
       }
     } else {
@@ -96,38 +133,97 @@ const handleSubmit = () => {
   });
 };
 
-
 const resetForm = () => {
   Object.assign(account, {
-    id: 0,
-    username: "",
-    password: "",
+    id: "",
+    username: null,
+    password: null,
     status: false,
-    name: "",
-    phone: "",
-    email: "",
+    name: null,
+    phone: null,
+    email: null,
     date_birth: null,
-    citizen_id: "",
+    citizen_id: null,
     gender: 0,
     role: null,
     license_class: null,
     license_expiry_date: null,
-    area: "",
-    company_id: 41,
+    area: null,
+    note: null,
+    company_id: Number(companyId),
+  });
+  isEditMode.value = false;
+  ruleFormRef.value?.clearValidate();
+};
+
+watch(
+  () => account.role,
+  (newRole) => {
+    if (newRole === 4 || newRole === 5) {
+      account.license_class = null;
+      account.license_expiry_date = null;
+    }
+  }
+);
+
+const fetchAccounts = async () => {
+  loading.value = true;
+  try {
+    const response = await getAllAccountByCompanyAPI(companyId);
+    if (response.result) {
+      tableData.value = Array.isArray(response.result)
+        ? response.result
+        : [response.result];
+    }
+  } catch (error) {
+    console.error("🚨 Error fetching accounts:", error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const filterTableData = computed(() =>
+  tableData.value.filter(
+    (data) =>
+      !search.value ||
+      data.name?.toLowerCase().includes(search.value.toLowerCase()) ||
+      data.phone?.toLowerCase().includes(search.value.toLowerCase())
+  )
+);
+const handleEdit = (index: number, row: AccountType) => {
+  console.log(index, row);
+  isEditMode.value = true;
+  dialogVisible.value = true;
+  Object.assign(account, row);
+};
+const handleDelete = async (index: number, row: AccountType) => {
+  ElMessageBox.confirm(
+    `Bạn có chắc chắn muốn xóa tài khoản "${row.username}" không?`,
+    "Xác nhận",
+    {
+      confirmButtonText: "Xóa",
+      cancelButtonText: "Hủy",
+      type: "warning",
+    }
+  ).then(async () => {
+    try {
+      loading.value = true;
+      await deleteAccountAPI(row._id);
+      ElMessage.success("Xóa tài khoản thành công!");
+      
+      tableData.value.splice(index, 1);
+    } catch (error) {
+      ElMessage.error("Không thể xóa tài khoản, vui lòng thử lại!");
+    } finally {
+      loading.value = false;
+    }
+  }).catch(() => {
+    ElMessage.info("Đã hủy xóa tài khoản.");
   });
 };
 
 
-
-
-
-watch(() => account.role, (newRole) => {
-  if (newRole === 4 || newRole === 5) {
-    account.license_class = null; 
-    account.license_expiry_date = null;
-  }
-});
-
+onMounted(fetchAccounts);
 </script>
 <template>
   <section class="px-4 py-4 flex justify-between items-center">
@@ -136,7 +232,61 @@ watch(() => account.role, (newRole) => {
       Thêm nhân viên
     </el-button>
   </section>
-  <el-dialog v-model="dialogVisible" title="Thêm nhân viên" width="1000" :before-close="handleClose">
+  <section class="px-4">
+    <el-table
+      :data="filterTableData"
+      stripe
+      style="width: 100%"
+      v-loading="loading"
+    >
+      <el-table-column type="index" label="STT" width="50" />
+      <el-table-column prop="name" label="Họ tên" />
+      <el-table-column prop="username" label="Tài khoản" />
+      <el-table-column prop="phone" label="Số điện thoại" />
+      <el-table-column prop="role" label="Chức vụ">
+        <template #default="{ row }">
+          <el-tag v-if="row.role === 2" type="success">Phụ xe</el-tag>
+          <el-tag v-if="row.role === 3" type="warning">Tài xế</el-tag>
+          <el-tag v-if="row.role === 4" type="danger">Nhân viên</el-tag>
+          <el-tag v-if="row.role === 5" type="primary">Quản trị viên</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="gender" label="Giới tính">
+        <template #default="{ row }">
+          <el-tag v-if="row.gender === 1" type="success">Nam</el-tag>
+          <el-tag v-if="row.gender === 2" type="danger">Nữ</el-tag>
+          <el-tag v-if="row.gender === 3" type="info">Khác</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="status" label="Trạng thái">
+        <template #default="{ row }">
+          <el-tag v-if="row.status" type="success">Kích hoạt</el-tag>
+          <el-tag v-else type="danger">Ngưng kích hoạt</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="note" label="Ghi chú" />
+      <el-table-column align="right">
+        <template #header>
+          <el-input
+            v-model="search"
+            size="small"
+            placeholder="Tìm kiếm nhân viên"
+          />
+        </template>
+        <template #default="scope">
+          <el-button type="primary" :icon="Edit" circle @click="handleEdit(scope.$index, scope.row)"/>
+          <el-button type="danger" :icon="Delete" circle @click="handleDelete(scope.$index, scope.row)"/>
+        </template>
+      </el-table-column>
+    </el-table>
+  </section>
+
+  <el-dialog
+    v-model="dialogVisible"
+    :title="isEditMode ? 'Chỉnh sửa nhân viên' : 'Thêm nhân viên'"
+    width="1000"
+    :before-close="handleClose"
+  >
     <el-form :model="account" :rules="rules" ref="ruleFormRef">
       <el-row>
         <el-col :span="8">
@@ -145,19 +295,32 @@ watch(() => account.role, (newRole) => {
             <div class="flex flex-col items-start mt-5">
               <span class="text-base font-medium">Tài khoản</span>
               <el-form-item prop="username" class="w-full">
-                <el-input v-model="account.username" placeholder="Nhập tên tài khoản" type="text" />
+                <el-input
+                  v-model="account.username"
+                  :disabled="isEditMode"
+                  placeholder="Nhập tên tài khoản"
+                  type="text"
+                />
               </el-form-item>
             </div>
-            <div class="flex flex-col items-start mt-3">
+            <div class="flex flex-col items-start mt-3" v-if="!isEditMode">
               <span class="text-base font-medium">Mật khẩu</span>
               <el-form-item prop="password" class="w-full">
-                <el-input v-model="account.password" placeholder="Nhập mật khẩu" type="password" />
+                <el-input
+                  v-model="account.password"
+                  placeholder="Nhập mật khẩu"
+                  type="password"
+                />
               </el-form-item>
             </div>
             <div class="flex flex-col items-start mt-3">
               <span class="text-base font-medium">Trạng thái</span>
-              <el-switch v-model="account.status" size="large" active-text="Kích hoạt"
-                inactive-text="Ngưng kích hoạt" />
+              <el-switch
+                v-model="account.status"
+                size="large"
+                active-text="Kích hoạt"
+                inactive-text="Ngưng kích hoạt"
+              />
             </div>
           </div>
         </el-col>
@@ -175,7 +338,6 @@ watch(() => account.role, (newRole) => {
               <el-form-item prop="phone" class="w-full">
                 <el-input v-model="account.phone" type="text" />
               </el-form-item>
-              
             </div>
             <div class="flex flex-col items-start mt-3">
               <span class="text-base font-medium">Email</span>
@@ -195,7 +357,11 @@ watch(() => account.role, (newRole) => {
             </div>
             <div class="flex flex-col items-start mt-3">
               <span class="text-base font-medium">Ngày sinh</span>
-              <el-date-picker v-model="account.date_birth" type="date" placeholder="Chọn ngày sinh" />
+              <el-date-picker
+                v-model="account.date_birth"
+                type="date"
+                placeholder="Chọn ngày sinh"
+              />
             </div>
           </div>
         </el-col>
@@ -206,38 +372,66 @@ watch(() => account.role, (newRole) => {
               <span class="text-base font-medium">Chức vụ</span>
               <el-form-item prop="role" class="w-full">
                 <el-select v-model="account.role" placeholder="Chọn chức vụ">
-                  <el-option v-for="item in optionsRole" :key="item.value" :label="item.label" :value="item.value" />
+                  <el-option
+                    v-for="item in optionsRole"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
                 </el-select>
               </el-form-item>
             </div>
-            <div class="flex flex-col items-start mt-3" v-if="account.role === 3 || account.role === 2">
+            <div
+              class="flex flex-col items-start mt-3"
+              v-if="account.role === 3 || account.role === 2"
+            >
               <span class="text-base font-medium">Hạng bằng lái</span>
-              <el-select v-model="account.license_class" placeholder="Chọn hạng bằng lái">
-                <el-option v-for="item in optionsLicenseClass" :key="item.value" :label="item.label"
-                  :value="item.value" />
+              <el-select
+                v-model="account.license_class"
+                placeholder="Chọn hạng bằng lái"
+              >
+                <el-option
+                  v-for="item in optionsLicenseClass"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </div>
-            <div class="flex flex-col items-start mt-3" v-if="account.role === 3 || account.role === 2">
+            <div
+              class="flex flex-col items-start mt-3"
+              v-if="account.role === 3 || account.role === 2"
+            >
               <span class="text-base font-medium">Ngày hết hạn</span>
-              <el-date-picker v-model="account.license_expiry_date" type="date"
-                placeholder="Chọn ngày hết hạn bằng lái" />
+              <el-date-picker
+                v-model="account.license_expiry_date"
+                type="date"
+                placeholder="Chọn ngày hết hạn bằng lái"
+              />
             </div>
             <div class="flex flex-col items-start mt-3">
               <span class="text-base font-medium">Khu vực</span>
-              <el-input v-model="account.area" type="text" />
+              <el-form-item prop="area" class="w-full">
+                <el-input v-model="account.area" type="text" />
+              </el-form-item>
+              
+            </div>
+            <div class="flex flex-col items-start mt-3">
+              <span class="text-base font-medium">Ghi chú</span>
+              <el-form-item prop="note" class="w-full">
+                <el-input v-model="account.note" type="textarea" />
+              </el-form-item>
+              
             </div>
           </div>
         </el-col>
       </el-row>
-
-
     </el-form>
     <template #footer>
       <div class="dialog-footer">
-        <el-button type="danger" @click="dialogVisible = false">Xóa</el-button>
         <el-button @click="handleClose">Thoát</el-button>
         <el-button type="primary" @click="handleSubmit">
-          Lưu
+          {{ isEditMode ? "Cập nhật" : "Thêm mới" }}
         </el-button>
       </div>
     </template>

@@ -17,4 +17,41 @@ export const createAccountAPI = async (data: AccountType): Promise<ApiResponse<A
         throw error;
     }
 };
+export const getAllAccountByCompanyAPI = async (id: string): Promise<ApiResponse<AccountType>> => {
+    try {
+        return await $fetch<ApiResponse<AccountType>>(
+            `${API_GATEWAY_URL}/v1/account/get-all-account-by-company/${id}`
+        );
+    } catch (error) {
+        console.error("Error:", error);
+        throw error;
+    }
+}
+export const updateAccountAPI = async (data: AccountType): Promise<ApiResponse<AccountType>> => {
+    try {
+        return await $fetch<ApiResponse<AccountType>>(
+            `${API_GATEWAY_URL}/v1/account/update-account-info/${data._id}`,
+            {
+                method: "PUT",
+                body: data,
+            }
+        );
+    } catch (error) {
+        console.error("Error:", error);
+        throw error;
+    }
+}
+export const deleteAccountAPI = async (id: string): Promise<ApiResponse<void>> => {
+    try {
+        return await $fetch<ApiResponse<void>>(
+            `${API_GATEWAY_URL}/v1/account/delete-account/${id}`,
+            {
+                method: "DELETE",
+            }
+        );
+    } catch (error) {
+        console.error("Error:", error);
+        throw error;
+    }
+}
 
