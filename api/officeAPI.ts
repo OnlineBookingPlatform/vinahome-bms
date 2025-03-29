@@ -1,4 +1,4 @@
-import type { OfficeType } from "~/types/OfficeType";
+import type { OfficeNameType, OfficeType } from "~/types/OfficeType";
 import type { ApiResponse } from "./ApiResponse";
 
 const API_GATEWAY_URL = "http://localhost:3002";
@@ -49,6 +49,19 @@ export const deleteOfficeAPI = async (id: number): Promise<ApiResponse<void>> =>
             `${API_GATEWAY_URL}/v2/office/delete-office/${id}`,
             {
                 method: "DELETE",
+            }
+        );
+    } catch (error) {
+        console.error("Error:", error);
+        throw error;
+    }
+}
+export const getOfficesNameAPI = async (companyId: number): Promise<ApiResponse<OfficeNameType[]>> => {
+    try {
+        return await $fetch<ApiResponse<OfficeNameType[]>>(
+            `${API_GATEWAY_URL}/v2/office/get-office-name-by-company/${companyId}`,
+            {
+                method: "GET",
             }
         );
     } catch (error) {

@@ -10,3 +10,7 @@ export interface OfficeType {
   phone_goods: string | null;
   note: string | null;
 }
+export interface OfficeNameType {
+  id: number;
+  name: string;
+}

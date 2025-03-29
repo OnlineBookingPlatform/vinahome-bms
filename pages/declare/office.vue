@@ -6,6 +6,7 @@ import {
   type FormInstance,
   type FormRules,
 } from "element-plus";
+import { fa } from "element-plus/es/locales.mjs";
 import { createOfficeAPI, deleteOfficeAPI, getOfficesByCompanyAPI, updateOfficeAPI } from "~/api/officeAPI";
 import TitleSectionDeclare from "~/components/UI/TitleSectionDeclare.vue";
 import { useAuthStore } from "~/stores/authStore";
@@ -112,7 +113,7 @@ const handleSubmit = () => {
           ElMessage.error("Không thể tạo văn phòng, vui lòng thử lại!");
           console.error("Error creating office:", error);
         } finally {
-          // loading.value = false;
+          loading.value = false;
           dialogVisible.value = false;
           resetForm();
         }
