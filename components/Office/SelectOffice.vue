@@ -23,6 +23,7 @@ const logout = () => {
 const startWorking = () => {
   if (officeStore.office) {
     console.log("Selected office:", officeStore.office);
+    router.push("/dashboard");
   } else {
     console.warn("No office selected");
   }
