@@ -1,6 +1,14 @@
 <script setup lang="ts">
+import { ElMessage } from 'element-plus';
 import { useRouter } from 'vue-router';
 const router = useRouter();
+const value = ref<string | null>(null);
+const loading = ref(false);
+const options = ref([
+  { label: 'Văn phòng Hà Nội', value: 'hanoi' },
+  { label: 'Văn phòng Hồ Chí Minh', value: 'hcm' },
+  { label: 'Văn phòng Đà Nẵng', value: 'danang' },
+]);
 const logout = () => {
   router.push('/');
   ElMessage({

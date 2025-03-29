@@ -15,5 +15,4 @@ export interface AccountType {
     license_expiry_date: null | Date;
     area: string | null;
     company_id: number;
-    
 }

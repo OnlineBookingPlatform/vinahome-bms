@@ -5,35 +5,13 @@ definePageMeta({
 });
 </script>
 <template>
-  <section>
-    <div class="container">
-      <img src="/static/logo-2.png" alt="App Logo" class="logo" />
-      <h2 class="title">Lựa chọn văn phòng làm việc</h2>
-      <!-- <SelectOffice :officesName="officesName" :loading="loading" /> -->
-       <SelectOffice />
-    </div>
+  <section
+    class="flex min-h-screen flex-col items-center justify-center bg-gray-100 p-4"
+  >
+    <img src="/static/logo-2.png" alt="App Logo" class="mb-8 w-96" />
+    <h2 class="mb-4 text-xl font-semibold text-blue-600">
+      Lựa chọn văn phòng làm việc
+    </h2>
+    <SelectOffice />
   </section>
 </template>
-<style scoped>
-.container {
-  display: flex;
-  min-height: 100vh;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: #f7fafc;
-  padding: 1rem;
-}
-
-.logo {
-  margin-bottom: 2rem;
-  width: 400px;
-}
-
-.title {
-  margin-bottom: 1rem;
-  font-size: 20px;
-  font-weight: 600;
-  color: #0072bc;
-}
-</style>

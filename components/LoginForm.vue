@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
-import type { LoginType } from "@/types/AuthType";
+import type { AuthStoreType, LoginType } from "@/types/AuthType";
 import { bmsLoginAPI } from "../api/authAPI";
+import { useAuthStore } from "~/stores/authStore";
+import { useRouter } from 'vue-router';
+const authStore = useAuthStore();
+const router = useRouter();
 const ruleFormRef = ref<FormInstance>();
 const form = reactive<LoginType>({
   username: "",
@@ -19,11 +23,9 @@ const rules = reactive<FormRules<LoginType>>({
 });
 const onSubmit = async (formEl: FormInstance | undefined) => {
   if (!formEl) return;
-
   try {
     await formEl.validate();
     console.log("Form Login:", form);
-
     const response = await bmsLoginAPI(form);
     if (response.status !== 200) {
       ElMessage.error("Đăng nhập thất bại! Vui lòng thử lại.");
@@ -31,6 +33,10 @@ const onSubmit = async (formEl: FormInstance | undefined) => {
     }
     ElMessage.success("Đăng nhập thành công!");
     console.log("Login Success:", response);
+    const userData: AuthStoreType = response.result;
+    authStore.setUser(userData);
+    console.log("User stored in Pinia:", authStore.user);
+    router.push('/room-work');
   } catch (error: any) {
     console.error("Login Failed:", error);
     if (error.password && Array.isArray(error.password)) {
