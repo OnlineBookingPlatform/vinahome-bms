@@ -6,10 +6,16 @@ import {
   type FormInstance,
   type FormRules,
 } from "element-plus";
-import { createVehicleAPI, deleteVehicleAPI, getVehiclesAPI, updateVehicleAPI } from "~/api/vehicleAPI";
+import {
+  createVehicleAPI,
+  deleteVehicleAPI,
+  getVehiclesAPI,
+  updateVehicleAPI,
+} from "~/api/vehicleAPI";
 import TitleSectionDeclare from "~/components/UI/TitleSectionDeclare.vue";
 import { useAuthStore } from "~/stores/authStore";
 import type { VehicleType } from "~/types/VehicleType";
+import { formatDate } from "@/lib/dateUtils";
 const dialogVisible = ref(false);
 const isEditMode = ref(false);
 const tableData = ref<VehicleType[]>([]);
@@ -39,11 +45,24 @@ const vehicleTypes = ref([
   { id: 5, name: "Phòng VIP (cabin)" },
   { id: 6, name: "Xe trung chuyển" },
 ]);
+const formatVehicleType = (row: any) => {
+  const type = vehicleTypes.value.find((v) => v.id === row.type);
+  return type ? type.name : "Không xác định";
+};
 const status = ref([
-  { id: 1, name: "Đang sử dụng" },
-  { id: 2, name: "Đang bảo dưỡng, sữa chữa" },
-  { id: 3, name: "Ngừng hoạt động" },
+  { id: 1, name: "Đang sử dụng", type: "success" },
+  { id: 2, name: "Đang bảo dưỡng", type: "warning" },
+  { id: 3, name: "Ngừng hoạt động", type: "danger" },
 ]);
+const getStatusName = (statusId: number) => {
+  const item = status.value.find((s) => s.id === statusId);
+  return item ? item.name : "Không xác định";
+};
+
+const getStatusTagType = (statusId: number) => {
+  const item = status.value.find((s) => s.id === statusId);
+  return item ? item.type : "info";
+};
 const rules = reactive<FormRules<VehicleType>>({
   license_plate: [
     { required: true, message: "Vui lòng nhập biển số xe", trigger: "blur" },
@@ -106,7 +125,6 @@ const vehicle = ref<VehicleType>({
   company_id: authStore.storeCompanyId ?? 0,
 });
 
-
 const handleSubmit = () => {
   ruleFormRef.value?.validate(async (valid) => {
     if (valid) {
@@ -118,7 +136,7 @@ const handleSubmit = () => {
           console.log("Update: ", response);
           if (response.result) {
             ElMessage.success("Cập nhật phương tiện thành công!");
-            console.log("Update: ",response.result);
+            console.log("Update: ", response.result);
             const index = tableData.value.findIndex(
               (item) => item.id === response.result.id
             );
@@ -176,21 +194,23 @@ const handleDelete = (index: number, row: VehicleType) => {
       cancelButtonText: "Hủy",
       type: "warning",
     }
-  ).then(async () => {
-    try {
-      loading.value = true;
-      await deleteVehicleAPI(row.id);
-      ElMessage.success("Xóa phương tiện thành công!");
-      
-      tableData.value.splice(index, 1);
-    } catch (error) {
-      ElMessage.error("Không thể xóa phương tiện, vui lòng thử lại!");
-    } finally {
-      loading.value = false;
-    }
-  }).catch(() => {
-    ElMessage.info("Đã hủy xóa phương tiện.");
-  });
+  )
+    .then(async () => {
+      try {
+        loading.value = true;
+        await deleteVehicleAPI(row.id);
+        ElMessage.success("Xóa phương tiện thành công!");
+
+        tableData.value.splice(index, 1);
+      } catch (error) {
+        ElMessage.error("Không thể xóa phương tiện, vui lòng thử lại!");
+      } finally {
+        loading.value = false;
+      }
+    })
+    .catch(() => {
+      ElMessage.info("Đã hủy xóa phương tiện.");
+    });
 };
 const fetchVehicles = async () => {
   loading.value = true;
@@ -229,10 +249,30 @@ onMounted(fetchVehicles);
       <el-table-column prop="license_plate" label="Biển số" />
       <el-table-column prop="phone" label="Số điện thoại xe" />
       <el-table-column prop="color" label="Màu xe" />
-      <el-table-column prop="registration_expiry" label="Hạn đăng kiểm" />
-      <el-table-column prop="insurance_expiry" label="Hạn bảo hiểm" />
-      <el-table-column prop="type" label="Loại xe" />
-      <el-table-column prop="status" label="Tình trạng" />
+      <el-table-column prop="registration_expiry" label="Hạn đăng kiểm">
+        <template v-slot="scope">
+          {{ formatDate(scope.row.registration_expiry) }}
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="insurance_expiry" label="Hạn bảo hiểm" >
+        <template v-slot="scope">
+          {{ formatDate(scope.row.insurance_expiry) }}
+        </template>
+      </el-table-column>
+      <el-table-column
+        prop="type"
+        label="Loại xe"
+        :formatter="formatVehicleType"
+      />
+      <el-table-column prop="status" label="Tình trạng">
+        <template v-slot="scope">
+          <el-tag :type="getStatusTagType(scope.row.status)">
+            {{ getStatusName(scope.row.status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+
       <el-table-column prop="note" label="Ghi chú" />
       <el-table-column align="right">
         <template #header>
