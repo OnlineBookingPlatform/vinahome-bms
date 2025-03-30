@@ -167,7 +167,11 @@ const fetchOffices = async () => {
       tableData.value = response.result;
       console.log(response.result);
     }
+    else {
+      ElMessage.error(response.message || "Có lỗi xảy ra!");
+    }
   } catch (error) {
+    ElMessage.error("Có lỗi xảy ra khi tải dữ liệu văn phòng!");
     console.error("🚨 Error fetching:", error);
   } finally {
     loading.value = false;
