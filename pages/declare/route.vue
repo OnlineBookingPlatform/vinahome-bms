@@ -7,12 +7,13 @@ import {
 } from "element-plus";
 import { useAuthStore } from "~/stores/authStore";
 import type { RouteType } from "~/types/RouteType";
-import { Plus, Delete, Edit } from "@element-plus/icons-vue";
+import { Plus, Delete, Edit, Top } from "@element-plus/icons-vue";
 import TitleSectionDeclare from "~/components/UI/TitleSectionDeclare.vue";
 import {
   createRouteAPI,
   deleteRouteAPI,
   getRoutesByCompanyAPI,
+  moveTopRouteAPI,
   updateRouteAPI,
 } from "~/api/routeAPI";
 const dialogVisible = ref(false);
@@ -155,6 +156,44 @@ const handleDelete = (index: number, row: RouteType) => {
       ElMessage.info("Đã hủy xóa tuyến.");
     });
 };
+const handleMoveTop = (index: number, row: RouteType) => {
+  ElMessageBox.confirm(
+    `Bạn có chắc chắn muốn di chuyển tuyến "${row.name}" lên trên không?`,
+    "Xác nhận",
+    {
+      confirmButtonText: "Di chuyển",
+      cancelButtonText: "Hủy",
+      type: "warning",
+    }
+  )
+    .then(async () => {
+      try {
+        loading.value = true;
+        const response = await moveTopRouteAPI(row.id);
+
+        // 2. Kiểm tra response hợp lệ
+        if (!response || !response.result) {
+          throw new Error("Dữ liệu trả về không hợp lệ");
+        }
+        ElMessage.success("Di chuyển tuyến lên thành công!");
+        if (Array.isArray(response.result)) {
+          tableData.value = response.result.map((item) => ({
+            ...item,
+            created_at: item.created_at
+              ? new Date(item.created_at).toISOString()
+              : null,
+          }));
+        }
+      } catch (error) {
+        ElMessage.error("Không thể di chuyển tuyến, vui lòng thử lại!");
+      } finally {
+        loading.value = false;
+      }
+    })
+    .catch(() => {
+      ElMessage.info("Đã hủy di chuyển tuyến.");
+    });
+};
 const fetchRoutes = async () => {
   loading.value = true;
   try {
@@ -198,6 +237,12 @@ onMounted(fetchRoutes);
       <el-table-column prop="note" label="Ghi chú" />
       <el-table-column>
         <template #default="scope">
+          <el-button
+            type="warning"
+            :icon="Top"
+            circle
+            @click="handleMoveTop(scope.$index, scope.row)"
+          />
           <el-button
             type="primary"
             :icon="Edit"

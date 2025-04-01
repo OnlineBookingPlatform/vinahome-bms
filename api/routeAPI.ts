@@ -70,3 +70,16 @@ export const getRoutesNameAPI = async (companyId: number): Promise<ApiResponse<R
         throw error;
     }
 }
+export const moveTopRouteAPI = async (id: number): Promise<ApiResponse<RouteType>> => {
+    try {
+        return await $fetch<ApiResponse<RouteType>>(
+            `${API_GATEWAY_URL}/v2/route/move-top-route/${id}`,
+            {
+                method: "PUT",
+            }
+        );
+    } catch (error) {
+        console.error("Error:", error);
+        throw error;
+    }
+}
