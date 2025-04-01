@@ -1,4 +1,4 @@
-import type { SeatMapType } from "~/types/SeatType";
+import type { SeatMapNameType, SeatMapType } from "~/types/SeatType";
 import type { ApiResponse } from "./ApiResponse";
 const API_GATEWAY_URL = "http://localhost:3002";
 
@@ -45,6 +45,22 @@ export const getSeatMapByCompanyAPI = async (
     throw error;
   }
 };
+
+export const getSeatMapNameByCompanyAPI = async (
+  companyId: number
+): Promise<ApiResponse<SeatMapNameType[]>> => {
+  try {
+    return await $fetch<ApiResponse<SeatMapNameType[]>>(
+      `${API_GATEWAY_URL}/v2/seat/get-seat-map-name-by-company/${companyId}`,
+      {
+        method: "GET",
+      }
+    );
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const updateSeatMapAPI = async (
   seatMap: SeatMapType
 ): Promise<ApiResponse<SeatMapType>> => {
@@ -59,4 +75,5 @@ export const updateSeatMapAPI = async (
   } catch (error) {
     throw error;
   }
-}
+};
+

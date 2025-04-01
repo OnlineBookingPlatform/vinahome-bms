@@ -7,3 +7,7 @@ export interface RouteType {
   note: string | null;
   company_id: number;
 }
+export interface RouteNameType {
+  id: number;
+  name: string;
+}

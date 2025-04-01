@@ -1,4 +1,4 @@
-import type { RouteType } from "~/types/RouteType";
+import type { RouteNameType, RouteType } from "~/types/RouteType";
 import type { ApiResponse } from "./ApiResponse";
 
 const API_GATEWAY_URL = "http://localhost:3002";
@@ -57,9 +57,9 @@ export const deleteRouteAPI = async (id: number): Promise<ApiResponse<void>> => 
         throw error;
     }
 }
-export const getRoutesNameAPI = async (companyId: number): Promise<ApiResponse<RouteType[]>> => {
+export const getRoutesNameAPI = async (companyId: number): Promise<ApiResponse<RouteNameType[]>> => {
     try {
-        return await $fetch<ApiResponse<RouteType[]>>(
+        return await $fetch<ApiResponse<RouteNameType[]>>(
             `${API_GATEWAY_URL}/v2/route/get-routes-name-by-company/${companyId}`,
             {
                 method: "GET",

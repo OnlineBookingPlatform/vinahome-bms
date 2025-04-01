@@ -17,3 +17,8 @@ export interface SeatType {
   status: boolean;
   name: string;
 }
+
+export interface SeatMapNameType {
+  id: number;
+  name: string;
+}

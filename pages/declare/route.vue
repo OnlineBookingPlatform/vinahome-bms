@@ -235,7 +235,7 @@ onMounted(fetchRoutes);
       </el-table-column>
 
       <el-table-column prop="note" label="Ghi chú" />
-      <el-table-column>
+      <el-table-column align="right">
         <template #default="scope">
           <el-button
             type="warning"
