@@ -83,7 +83,6 @@ const handleSubmit = () => {
   ruleFormRef.value?.validate(async (valid) => {
     if (valid) {
       if (isEditMode.value) {
-        // await updateOffice();
         console.log("Update:", schedule.value);
         try {
           const response = await updateScheduleAPI(schedule.value);
