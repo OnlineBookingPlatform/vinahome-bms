@@ -1,13 +1,14 @@
-export interface SeatMap {
+export interface SeatMapType {
   id: number;
-  name: string;
+  name: string | null;
   total_floor: number;
   total_column: number;
   total_row: number;
-  seats: Seat[];
+  seats: SeatType[];
+  company_id: number;
 }
 
-export interface Seat {
+export interface SeatType {
   id: number;
   column: number;
   row: number;

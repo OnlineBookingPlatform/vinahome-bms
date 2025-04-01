@@ -1,20 +1,26 @@
 <script setup lang="ts">
-import { ElMessage, ElMessageBox } from "element-plus";
-import { Plus } from "@element-plus/icons-vue";
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules,
+} from "element-plus";
+import { Plus, Delete, Edit } from "@element-plus/icons-vue";
 import TitleSectionDeclare from "~/components/UI/TitleSectionDeclare.vue";
-import type { Seat, SeatMap } from "~/types/SeatType";
-import { createSeatMap } from "~/api/seatAPI";
+import type { SeatType, SeatMapType } from "~/types/SeatType";
+import {
+  createSeatMapAPI,
+  deleteSeatMapAPI,
+  getSeatMapByCompanyAPI,
+  updateSeatMapAPI,
+} from "~/api/seatAPI";
+import { useAuthStore } from "~/stores/authStore";
 const dialogVisible = ref(false);
-
-const handleClose = (done: () => void) => {
-  ElMessageBox.confirm("Bạn có chắc chắn muốn đóng không?")
-    .then(() => {
-      done();
-    })
-    .catch(() => {
-      // catch error
-    });
-};
+const isEditMode = ref(false);
+const tableData = ref<SeatMapType[]>([]);
+const loading = ref<boolean>(false);
+const ruleFormRef = ref<FormInstance>();
+const authStore = useAuthStore();
 const floorOptions = Array.from({ length: 3 }, (_, i) => ({
   label: `${i + 1} tầng`,
   value: i + 1,
@@ -28,21 +34,53 @@ const columnOptions = Array.from({ length: 9 }, (_, i) => ({
   value: i + 1,
 }));
 
-const seatMap = reactive<SeatMap>({
+const seatMap = ref<SeatMapType>({
   id: 0,
   name: "",
   total_floor: 1,
   total_column: 3,
   total_row: 1,
   seats: [],
+  company_id: authStore.storeCompanyId ?? 0,
 });
+const rules = reactive<FormRules<SeatMapType>>({
+  name: [
+    { required: true, message: "Vui lòng nhập tên sơ đồ", trigger: "blur" },
+  ],
+});
+const resetForm = () => {
+  seatMap.value = {
+    id: 0,
+    name: "",
+    total_floor: 1,
+    total_column: 3,
+    total_row: 1,
+    seats: isEditMode.value ? seatMap.value.seats : [],
+    company_id: authStore.storeCompanyId ?? 0,
+  };
+  isEditMode.value = false;
+  ruleFormRef.value?.clearValidate();
+};
+
+const handleClose = (done: () => void) => {
+  ElMessageBox.confirm("Bạn có chắc chắn muốn đóng không?")
+    .then(() => {
+      resetForm();
+      dialogVisible.value = false;
+      done();
+    })
+    .catch(() => {
+      // catch error
+    });
+};
 
 const generateSeats = () => {
-  const seats: Seat[] = [];
-  let seatId = 1;
-  for (let floor = 1; floor <= seatMap.total_floor; floor++) {
-    for (let row = 1; row <= seatMap.total_row; row++) {
-      for (let column = 1; column <= seatMap.total_column; column++) {
+  if (seatMap.value.seats.length > 0) return; // Nếu đã có ghế, không tạo lại
+
+  const seats: SeatType[] = [];
+  for (let floor = 1; floor <= seatMap.value.total_floor; floor++) {
+    for (let row = 1; row <= seatMap.value.total_row; row++) {
+      for (let column = 1; column <= seatMap.value.total_column; column++) {
         seats.push({
           id: 0,
           floor,
@@ -55,44 +93,223 @@ const generateSeats = () => {
       }
     }
   }
-  seatMap.seats = seats;
+  seatMap.value.seats = seats;
 };
 
-const seatLayout = computed(() => {
-  generateSeats();
-  return seatMap.seats;
-});
+watch(
+  () => [
+    seatMap.value.total_floor,
+    seatMap.value.total_row,
+    seatMap.value.total_column,
+  ],
+  () => {
+    if (isEditMode.value) {
+      seatMap.value.seats = generateSeatsForEdit(seatMap.value);
+    } else {
+      seatMap.value.seats = [];
+      generateSeats();
+    }
+  },
+  { deep: true, immediate: true }
+);
+const generateSeatsForEdit = (seatMapData: SeatMapType) => {
+  const seats: SeatType[] = [];
 
-const toggleSeat = (seat: Seat) => {
+  for (let floor = 1; floor <= seatMapData.total_floor; floor++) {
+    for (let r = 1; r <= seatMapData.total_row; r++) {
+      for (let c = 1; c <= seatMapData.total_column; c++) {
+        // Tìm ghế cũ theo floor, row, column
+        const existingSeat = seatMapData.seats.find(
+          (s) => s.floor === floor && s.row === r && s.column === c
+        );
+
+        seats.push(
+          existingSeat ?? {
+            id: 0,
+            floor,
+            row: r,
+            column: c,
+            code: `T${floor}-H${r}-C${c}`,
+            status: false,
+            name: "",
+          }
+        );
+      }
+    }
+  }
+  return seats;
+};
+
+const seatLayout = computed(() => seatMap.value.seats);
+
+const toggleSeat = (seat: SeatType) => {
   seat.status = !seat.status;
 };
 
-const updateSeatName = (seat: Seat, event: Event) => {
+const updateSeatName = (seat: SeatType, event: Event) => {
   const target = event.target as HTMLInputElement;
   seat.name = target.value;
 };
-const saveSeatMap = async () => {
-  try {
-    console.log("Sơ đồ ghế:", seatMap);
-    const response = await createSeatMap(seatMap);
-    console.log("Sơ đồ ghế đã lưu:", response);
-    ElMessage.success("Lưu sơ đồ ghế thành công!");
-    dialogVisible.value = false;
-  } catch (error) {
-    console.error("Error:", error);
-    ElMessage.error("Lưu thất bại!");
-  }
+const handleEdit = (index: number, row: SeatMapType) => {
+  isEditMode.value = true;
+  seatMap.value = {
+    ...row,
+    seats: generateSeatsForEdit(row),
+  };
+  dialogVisible.value = true;
 };
 
+const handleCreate = () => {
+  isEditMode.value = false;
+  seatMap.value = {
+    id: 0,
+    name: "",
+    total_floor: 1,
+    total_column: 3,
+    total_row: 1,
+    seats: [],
+    company_id: authStore.storeCompanyId ?? 0,
+  };
+
+  generateSeats(); // Tạo danh sách ghế mặc định
+  dialogVisible.value = true;
+};
+const handleSubmit = () => {
+  ruleFormRef.value?.validate(async (valid) => {
+    if (valid) {
+      if (isEditMode.value) {
+        console.log("Updating seat map:", seatMap);
+        try {
+          const response = await updateSeatMapAPI(seatMap.value);
+          if (response.result) {
+            ElMessage.success("Cập nhật sơ đồ ghế thành công!");
+            console.log("Data server:", response.result);
+            const index = tableData.value.findIndex(
+              (item) => item.id === response.result.id
+            );
+            if (index !== -1) {
+              tableData.value[index] = response.result;
+            } 
+          } else {
+            ElMessage.error(response.message || "Có lỗi xảy ra!");
+            console.error(response.message);
+          }
+        } catch (error) {
+          ElMessage.error("Không thể cập nhật sơ đồ ghế, vui lòng thử lại!");
+          console.error("Error updating:", error);
+        } finally {
+          loading.value = false;
+          dialogVisible.value = false;
+          resetForm();
+        }
+      } else {
+        console.log("Creating new seat map:", seatMap.value);
+        try {
+          const response = await createSeatMapAPI(seatMap.value);
+          if (response.result) {
+            ElMessage.success("Tạo sơ đồ ghế thành công!");
+            console.log(response.result);
+            tableData.value.push(response.result);
+          } else {
+            ElMessage.error(response.message || "Có lỗi xảy ra!");
+            console.error(response.message);
+          }
+        } catch (error) {
+          ElMessage.error("Không thể tạo sơ đồ ghế, vui lòng thử lại!");
+          console.error("Error creating:", error);
+        } finally {
+          loading.value = false;
+          dialogVisible.value = false;
+          resetForm();
+        }
+      }
+    }
+  });
+};
+
+const handleDelete = (index: number, row: SeatMapType) => {
+  ElMessageBox.confirm(
+    `Bạn có chắc chắn muốn xóa "${row.name}" không?`,
+    "Xác nhận",
+    {
+      confirmButtonText: "Xóa",
+      cancelButtonText: "Hủy",
+      type: "warning",
+    }
+  )
+    .then(async () => {
+      try {
+        loading.value = true;
+        await deleteSeatMapAPI(row.id);
+        ElMessage.success("Xóa sơ đồ thành công!");
+
+        tableData.value.splice(index, 1);
+      } catch (error) {
+        ElMessage.error("Không thể xóa sơ đồ, vui lòng thử lại!");
+      } finally {
+        loading.value = false;
+      }
+    })
+    .catch(() => {
+      ElMessage.info("Đã hủy xóa sơ đồ.");
+    });
+};
+const fetchSeatMapByCompanyAPI = async () => {
+  loading.value = true;
+  try {
+    const response = await getSeatMapByCompanyAPI(
+      authStore.storeCompanyId ?? 0
+    );
+    if (response.result) {
+      tableData.value = response.result;
+    } else {
+      ElMessage.error(response.message || "Có lỗi xảy ra!");
+      console.error(response.message);
+    }
+  } catch (error) {
+    ElMessage.error("Không thể lấy danh sách sơ đồ ghế, vui lòng thử lại!");
+    console.error("Error fetching seat maps:", error);
+  } finally {
+    loading.value = false;
+  }
+};
+onMounted(fetchSeatMapByCompanyAPI);
 </script>
 <template>
   <section class="px-4 py-4 flex justify-between items-center">
     <TitleSectionDeclare title="SƠ ĐỒ GHẾ" />
-    <el-button type="primary" @click="dialogVisible = true" :icon="Plus">
+    <el-button type="primary" @click="handleCreate" :icon="Plus">
       Thêm sơ đồ ghế
     </el-button>
   </section>
-  <section class="px-4 py-4">a</section>
+  <section class="px-4">
+    <el-table :data="tableData" stripe style="width: 100%" v-loading="loading">
+      <el-table-column type="index" label="STT" width="50" />
+      <el-table-column prop="name" label="Tên sơ đồ" />
+      <el-table-column prop="total_floor" label="Loại xe">
+        <template #default="scope">
+          <span>{{ scope.row.total_floor }} tầng</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column align="right">
+        <template #default="scope">
+          <el-button
+            type="primary"
+            :icon="Edit"
+            circle
+            @click="handleEdit(scope.$index, scope.row)"
+          />
+          <el-button
+            type="danger"
+            :icon="Delete"
+            circle
+            @click="handleDelete(scope.$index, scope.row)"
+          />
+        </template>
+      </el-table-column>
+    </el-table>
+  </section>
 
   <el-dialog
     v-model="dialogVisible"
@@ -101,45 +318,49 @@ const saveSeatMap = async () => {
     :before-close="handleClose"
   >
     <div>
-      <el-row :gutter="20">
-        <el-col :span="9">
-          <span>Tên sơ đồ</span>
-          <el-input v-model="seatMap.name" placeholder="Nhập tên sơ đồ" />
-        </el-col>
-        <el-col :span="5">
-          <span>Số tầng</span>
-          <el-select v-model="seatMap.total_floor" placeholder="Chọn số tầng">
-            <el-option
-              v-for="item in floorOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
-        </el-col>
-        <el-col :span="5">
-          <span>Số cột</span>
-          <el-select v-model="seatMap.total_column" placeholder="Chọn số cột">
-            <el-option
-              v-for="item in columnOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
-        </el-col>
-        <el-col :span="5">
-          <span>Số hàng</span>
-          <el-select v-model="seatMap.total_row" placeholder="Chọn số hàng">
-            <el-option
-              v-for="item in rowOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
-        </el-col>
-      </el-row>
+      <el-form :model="seatMap" :rules="rules" ref="ruleFormRef">
+        <el-row :gutter="20">
+          <el-col :span="9">
+            <span>Tên sơ đồ</span>
+            <el-form-item prop="name" class="w-full">
+              <el-input v-model="seatMap.name" placeholder="Nhập tên sơ đồ" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="5">
+            <span>Số tầng</span>
+            <el-select v-model="seatMap.total_floor" placeholder="Chọn số tầng">
+              <el-option
+                v-for="item in floorOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-col>
+          <el-col :span="5">
+            <span>Số cột</span>
+            <el-select v-model="seatMap.total_column" placeholder="Chọn số cột">
+              <el-option
+                v-for="item in columnOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-col>
+          <el-col :span="5">
+            <span>Số hàng</span>
+            <el-select v-model="seatMap.total_row" placeholder="Chọn số hàng">
+              <el-option
+                v-for="item in rowOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-col>
+        </el-row>
+      </el-form>
     </div>
 
     <div>
@@ -156,7 +377,7 @@ const saveSeatMap = async () => {
         >
           <div
             v-for="seat in seatLayout.filter((s) => s.floor === floor)"
-            :key="seat.id"
+            :key="seat.code"
             @click="toggleSeat(seat)"
             class="border border-gray-300 p-2 flex flex-col items-center justify-center cursor-pointer"
             :class="{
@@ -182,7 +403,9 @@ const saveSeatMap = async () => {
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="dialogVisible = false">Thoát</el-button>
-        <el-button type="primary" @click="saveSeatMap">Lưu</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="loading"
+          >Lưu</el-button
+        >
       </div>
     </template>
   </el-dialog>
