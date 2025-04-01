@@ -6,8 +6,9 @@ import {
   type FormRules,
 } from "element-plus";
 import { useAuthStore } from "~/stores/authStore";
+import { useRouter } from "vue-router";
 import type { RouteType } from "~/types/RouteType";
-import { Plus, Delete, Edit, Top } from "@element-plus/icons-vue";
+import { Plus, Delete, Edit, Top, Tools } from "@element-plus/icons-vue";
 import TitleSectionDeclare from "~/components/UI/TitleSectionDeclare.vue";
 import {
   createRouteAPI,
@@ -22,6 +23,7 @@ const tableData = ref<RouteType[]>([]);
 const loading = ref<boolean>(false);
 const ruleFormRef = ref<FormInstance>();
 const authStore = useAuthStore();
+const router = useRouter();
 const rules = reactive<FormRules<RouteType>>({
   name: [
     { required: true, message: "Vui lòng nhập tên tuyến", trigger: "blur" },
@@ -194,6 +196,15 @@ const handleMoveTop = (index: number, row: RouteType) => {
       ElMessage.info("Đã hủy di chuyển tuyến.");
     });
 };
+const handleToManagePoint = (index: number, row: RouteType) => {
+  console.log("Manage Point:", row.id);
+  router.push({
+    path: `/declare/route/${row.id}`,
+    query: {
+      name: row.name,
+    },
+  });
+};
 const fetchRoutes = async () => {
   loading.value = true;
   try {
@@ -242,6 +253,12 @@ onMounted(fetchRoutes);
             :icon="Top"
             circle
             @click="handleMoveTop(scope.$index, scope.row)"
+          />
+          <el-button
+            type="success"
+            :icon="Tools"
+            circle
+            @click="handleToManagePoint(scope.$index, scope.row)"
           />
           <el-button
             type="primary"

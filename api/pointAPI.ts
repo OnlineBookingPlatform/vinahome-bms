@@ -1,4 +1,8 @@
-import type { PointNameType, PointType } from "~/types/PointType";
+import type {
+  PointNameType,
+  PointOfRouteType,
+  PointType,
+} from "~/types/PointType";
 import type { ApiResponse } from "./ApiResponse";
 
 const API_GATEWAY_URL = "http://localhost:3002";
@@ -69,7 +73,7 @@ export const getPointsNameByCompanyAPI = async (
 ): Promise<ApiResponse<PointNameType[]>> => {
   try {
     return await $fetch<ApiResponse<PointNameType[]>>(
-      `${API_GATEWAY_URL}/v2/point/get-points-name-by-company/${companyId}`,
+      `${API_GATEWAY_URL}/v2/point/get-point-name-by-company/${companyId}`,
       {
         method: "GET",
       }
@@ -78,4 +82,36 @@ export const getPointsNameByCompanyAPI = async (
     console.error("Error:", error);
     throw error;
   }
-}
+};
+
+export const createPointOfRouteAPI = async (
+  data: PointOfRouteType[]
+): Promise<ApiResponse<PointOfRouteType[]>> => {
+  try {
+    return await $fetch<ApiResponse<PointOfRouteType[]>>(
+      `${API_GATEWAY_URL}/v2/point/create-point-of-route`,
+      {
+        method: "POST",
+        body: data,
+      }
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
+export const getPointOfRouteByRouteAPI = async (
+  routeId: number
+): Promise<ApiResponse<PointOfRouteType[]>> => {
+  try {
+    return await $fetch<ApiResponse<PointOfRouteType[]>>(
+      `${API_GATEWAY_URL}/v2/point/get-point-of-route-by-route/${routeId}`,
+      {
+        method: "GET",
+      }
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
