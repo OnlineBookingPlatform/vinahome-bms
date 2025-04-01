@@ -229,7 +229,7 @@ watch(
 watch(
   () => point.value.districts_id,
   (newDistrictId) => {
-    if (isInitializing.value) return; // Không chạy nếu đang khởi tạo
+    if (isInitializing.value) return; 
     point.value.wards_id = null;
     wards.value = [];
     if (newDistrictId) {
