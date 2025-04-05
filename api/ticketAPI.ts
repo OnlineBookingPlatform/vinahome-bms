@@ -1,0 +1,20 @@
+import type { TicketType } from "~/types/TicketType";
+import type { ApiResponse } from "./ApiResponse";
+
+const API_GATEWAY_URL = "http://localhost:3002";
+
+export const getTicketByTripIdAPI = async (
+  trip_id: number
+): Promise<ApiResponse<TicketType[]>> => {
+  try {
+    return await $fetch<ApiResponse<TicketType[]>>(
+      `${API_GATEWAY_URL}/v2/ticket/get-ticket-by-trip/${trip_id}`,
+      {
+        method: "GET",
+      }
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+};
