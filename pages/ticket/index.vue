@@ -18,7 +18,15 @@ import {
   WindPower,
   RefreshLeft,
   Operation,
+  Timer,
+  Rank,
+  CopyDocument,
+  Phone,
+  InfoFilled,
 } from "@element-plus/icons-vue";
+import { getTicketByTripIdAPI } from "~/api/ticketAPI";
+import type { TicketType } from "~/types/TicketType";
+import ItemTicketCard from "~/components/Ticket/ItemTicketCard.vue";
 const authStore = useAuthStore();
 const selectedDate = ref<string>(dayjs().format("YYYY-MM-DD"));
 const selectedRoute = ref<string | null>(null);
@@ -69,32 +77,56 @@ const fetchTrips = async () => {
     loadingListTrip.value = false;
   }
 };
+const activeName = ref("1");
 const selectedTrip = ref<TripType | null>(null);
-const handleSelectTrip = (trip: TripType) => {
+const listItemTicket = ref<TicketType[]>([]);
+const handleSelectTrip = async (trip: TripType) => {
   selectedTrip.value = trip;
   console.log("Selected trip:", trip);
-};
-const activeName = ref("1");
+  activeName.value = "1";
 
-const handleClick = (tab: TabsPaneContext, event: Event) => {
-  switch(tab.paneName) {
-    case '1':
-      console.log('Đang chọn tab Sơ đồ ghế');
+  if (trip.id) {
+    const response = await getTicketByTripIdAPI(trip.id);
+    if (response.result) {
+      console.log("Danh sách vé:", response.result);
+      listItemTicket.value = response.result;
+    } else {
+      ElMessage.error("Có lỗi xảy ra khi lấy danh sách vé");
+    }
+  }
+};
+
+const handleClick = async (tab: TabsPaneContext, event: Event) => {
+  switch (tab.paneName) {
+    case "1":
+      if (!selectedTrip.value) {
+        ElMessage.warning("Vui lòng chọn chuyến trước");
+        return;
+      }
+
+      const response = await getTicketByTripIdAPI(selectedTrip.value?.id ?? 0);
+      if (response.result) {
+        console.log(response.result);
+        listItemTicket.value = response.result;
+      } else {
+        ElMessage.error("Có lỗi xảy ra khi lấy danh sách vé");
+      }
+      console.log("Đang chọn tab Sơ đồ ghế");
       break;
-    case '2':
-      console.log('Đang chọn tab Danh sách vé');
+    case "2":
+      console.log("Đang chọn tab Danh sách vé");
       break;
-    case '3':
-      console.log('Đang chọn tab Trung chuyển');
+    case "3":
+      console.log("Đang chọn tab Trung chuyển");
       break;
-    case '4':
-      console.log('Đang chọn tab Thu chi chuyến');
+    case "4":
+      console.log("Đang chọn tab Thu chi chuyến");
       break;
-    case '5':
-      console.log('Đang chọn tab Hàng hóa');
+    case "5":
+      console.log("Đang chọn tab Hàng hóa");
       break;
     default:
-      console.log('Tab không xác định');
+      console.log("Tab không xác định");
   }
 };
 
@@ -105,10 +137,47 @@ watch([selectedDate, selectedRoute], () => {
   fetchTrips();
   selectedTrip.value = null;
 });
+
+const availableFloats = computed(() => {
+  const floors = new Set<number>();
+  listItemTicket.value.forEach((ticket) => floors.add(ticket.seat_floor));
+  return Array.from(floors).sort((a, b) => a - b);
+});
+
+const getRows = (floor: number): number[] => {
+  const rows = new Set<number>();
+  listItemTicket.value
+    .filter((ticket) => ticket.seat_floor === floor)
+    .forEach((ticket) => rows.add(ticket.seat_row));
+  return Array.from(rows).sort((a, b) => a - b);
+};
+
+const getSeatsByFloorAndRow = (floor: number, row: number): TicketType[] => {
+  return listItemTicket.value
+    .filter((ticket) => ticket.seat_floor === floor && ticket.seat_row === row)
+    .sort((a, b) => a.seat_column - b.seat_column);
+};
+
+const selectedTickets = ref<TicketType[]>([]);
+
+const handleSelect = (ticket: TicketType) => {
+  const index = selectedTickets.value.findIndex((t) => t.id === ticket.id);
+  if (index > -1) {
+    selectedTickets.value.splice(index, 1); // Bỏ chọn
+  } else {
+    selectedTickets.value.push(ticket); // Thêm vào danh sách
+  }
+};
+const removeTagTicket = (ticketToRemove: TicketType) => {
+  selectedTickets.value = selectedTickets.value.filter(
+    (ticket) => ticket.id !== ticketToRemove.id
+  );
+};
 </script>
 <template>
   <section
     class="flex justify-between items-center px-4 bg-gray-200 w-full pb-1 pt-1"
+    :style="{ 'padding-right': selectedTickets.length > 0 ? '20%' : '0' }"
   >
     <div class="flex gap-4 items-center">
       <div>
@@ -147,7 +216,10 @@ watch([selectedDate, selectedRoute], () => {
       </div>
     </div>
   </section>
-  <section class="mt-1">
+  <section
+    class="mt-1"
+    :style="{ 'padding-right': selectedTickets.length > 0 ? '20%' : '0' }"
+  >
     <div v-if="loadingListTrip">
       <el-skeleton :animated="true" :count="3" class="w-full">
         <template #template>
@@ -169,7 +241,11 @@ watch([selectedDate, selectedRoute], () => {
       </div>
     </div>
   </section>
-  <section v-if="selectedTrip" class="mt-1">
+  <section
+    v-if="selectedTrip"
+    class="mt-1"
+    :style="{ 'padding-right': selectedTickets.length > 0 ? '20%' : '0' }"
+  >
     <div v-if="loadingInfoTrip">
       <el-skeleton :animated="true" :count="3" class="w-full">
         <template #template>
@@ -263,18 +339,135 @@ watch([selectedDate, selectedRoute], () => {
       </div>
     </div>
   </section>
-  <section v-if="selectedTrip" class="mt-1">
+  <section
+    v-if="selectedTrip"
+    class="mt-1"
+    :style="{ 'padding-right': selectedTickets.length > 0 ? '20%' : '0' }"
+  >
     <div></div>
     <div class="mt-1 px-4">
       <el-tabs v-model="activeName" class="demo-tabs" @tab-click="handleClick">
-        <el-tab-pane label="Sơ đồ ghế" name="1">User</el-tab-pane>
-        <el-tab-pane label="Danh sách vé" name="2">Config</el-tab-pane>
-        <el-tab-pane label="Trung chuyển" name="3">Role</el-tab-pane>
-        <el-tab-pane label="Thu chi chuyến" name="4">Task</el-tab-pane>
-        <el-tab-pane label="Hàng hóa" name="5">Task</el-tab-pane>
+        <el-tab-pane label="Sơ đồ ghế" name="1">
+          <div class="w-full">
+            <div class="flex flex-wrap w-full gap-4">
+              <div
+                v-for="floor in availableFloats"
+                :key="'floor-' + floor"
+                class="flex-grow w-full md:w-[calc(50%-0.5rem)] lg:w-[calc(33.33%-0.5rem)] xl:w-[calc(25%-0.5rem)]"
+              >
+                <div class="space-y-4 shadow-sm bg-white h-full">
+                  <div class="flex flex-col space-y-2">
+                    <div
+                      v-for="row in getRows(floor)"
+                      :key="'row-' + floor + '-' + row"
+                      class="flex space-x-3"
+                    >
+                      <ItemTicketCard
+                        v-for="ticket in getSeatsByFloorAndRow(floor, row)"
+                        :key="`${ticket.id}-${selectedTickets.some(
+                          (t) => t.id === ticket.id
+                        )}`"
+                        :ticket="ticket"
+                        :is-selected="
+                          selectedTickets.some((t) => t.id === ticket.id)
+                        "
+                        @select="handleSelect"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="Danh sách vé" name="2"></el-tab-pane>
+        <el-tab-pane label="Trung chuyển" name="3"></el-tab-pane>
+        <el-tab-pane label="Thu chi chuyến" name="4"></el-tab-pane>
+        <el-tab-pane label="Hàng hóa" name="5"></el-tab-pane>
       </el-tabs>
     </div>
   </section>
+  <div
+    v-if="selectedTickets.length > 0"
+    class="fixed right-0 top-0 h-full w-[20%] bg-white shadow-lg z-50 overflow-y-auto"
+    style="
+      box-shadow: -4px 0 6px -1px rgba(0, 0, 0, 0.1),
+        -2px 0 4px -1px rgba(0, 0, 0, 0.06);
+    "
+  >
+    <div class="flex flex-col gap-1">
+      <div class="bg-gray-200 w-full px-2 py-1 rounded-lg flex flex-wrap gap-2 justify-start">
+        <el-tooltip content="In vé" placement="bottom" >
+          <el-button type="primary" :icon="Printer" circle/>
+        </el-tooltip>
+        <el-tooltip content="Báo trung chuyển" placement="bottom">
+          <el-button type="info" :icon="InfoFilled" circle />
+        </el-tooltip>
+        
+        <el-tooltip content="Gọi khách" placement="bottom">
+          <el-button type="success" :icon="Phone" circle />
+        </el-tooltip>
+        <el-tooltip content="Sao chép vé" placement="bottom">
+          <el-button type="warning" :icon="CopyDocument" circle />
+        </el-tooltip>
+        <el-tooltip content="Di chuyển vé" placement="bottom">
+          <el-button color="#67C23A" :icon="Rank" circle />
+        </el-tooltip>
+        <el-tooltip content="Lịch sử vé" placement="bottom">
+          <el-button type="info" plain :icon="Clock" circle />
+        </el-tooltip>
+        <el-tooltip content="Chờ xử lý" placement="bottom">
+          <el-button color="#E6A23C" :icon="Timer" circle />
+        </el-tooltip>
+        <el-tooltip content="Hủy vé" placement="bottom">
+          <el-button type="danger" :icon="Delete" circle />
+        </el-tooltip>
+      </div>
+      <div class="flex flex-wrap gap-1 overflow-y-auto max-h-[calc(100%-50px)] px-2">
+        <el-tag
+          v-for="ticket in selectedTickets"
+          :key="ticket.id"
+          closable
+          @close="removeTagTicket(ticket)"
+          class="max-w-full truncate"
+        >
+          {{ ticket.seat_name }}
+        </el-tag>
+      </div>
+      <el-collapse>
+      <el-collapse-item name="1">
+        <template #title>
+          <div class="flex justify-between items-center px-2">
+            <span class="text-[15px] font-semibold text-[#0072bc]">THÔNG TIN HÀNH KHÁCH</span> 
+          </div>
+        </template>
+        <div>
+          Consistent with real life: in line with the process and logic of real
+          life, and comply with languages and habits that the users are used to;
+        </div>
+        <div>
+          Consistent within interface: all elements should be consistent, such
+          as: design style, icons and texts, position of elements, etc.
+        </div>
+      </el-collapse-item>
+      <el-collapse-item name="2">
+        <template #title>
+          <div class="flex justify-between items-center px-2">
+            <span class="text-[15px] font-semibold text-[#0072bc]">THÔNG TIN THANH TOÁN</span> 
+          </div>
+        </template>
+        <div>
+          Operation feedback: enable the users to clearly perceive their
+          operations by style updates and interactive effects;
+        </div>
+        <div>
+          Visual feedback: reflect current state by updating or rearranging
+          elements of the page.
+        </div>
+      </el-collapse-item>
+    </el-collapse>
+    </div>
+  </div>
 </template>
 <style>
 .item-trip-card {
