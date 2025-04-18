@@ -11,11 +11,13 @@
     isSelected: boolean;
     selectedByMe: boolean;
     selectorName: string | null;
+    loading: boolean;
   }>();
 
   const emit = defineEmits([ "select" ]);
 
   const handleClickTicket = () => {
+    if (props.loading) return;
     if (props.ticket.seat_status) {
       emit("select", props.ticket);
       console.log("Ticket clicked:", props.ticket);
@@ -32,9 +34,10 @@
         'bg-blue-200': props.selectorName && !props.selectedByMe,
         'border-[#0072bc]': props.isSelected || (props.selectorName && !props.selectedByMe),
         'border-gray-300': !props.isSelected && !(props.selectorName && !props.selectedByMe),
+        'opacity-50 pointer-events-none': props.loading,
       }
-    ]" @click="handleClickTicket" v-if="ticket.seat_status">
-
+    ]" @click="handleClickTicket" v-if="ticket.seat_status"
+    v-loading="props.loading">
     <div class="m-auto text-sm flex flex-col justify-center items-center"
       v-if="props.selectorName && !props.selectedByMe">
       <span>{{ props.selectorName }}</span>
@@ -43,11 +46,11 @@
     <div class="flex justify-between items-center w-full">
       <span class="text-[#0072bc] font-semibold absolute top-1 left-1">{{
         ticket.seat_name
-      }}</span>
+        }}</span>
       <div class="border border-black px-2 rounded-md ml-2 min-h-2" v-if="ticket.status_booking_ticket">
         <span class="text-black text-base font-medium">{{
           ticket.passenger_phone
-        }}</span>
+          }}</span>
       </div>
     </div>
 

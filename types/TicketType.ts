@@ -31,4 +31,8 @@ export interface BookingForm {
     id: number;
     seat_name: string;
   }[];
+
+  creator_by_id: string | null;
+  creator_by_name: string | null;
+  office_id: number | null;
 }

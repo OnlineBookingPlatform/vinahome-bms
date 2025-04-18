@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import { ElMessage, type TabsPaneContext } from "element-plus";
 import { formatTime } from "~/lib/timeUtils";
 import { getRoutesNameAPI } from "~/api/routeAPI";
+import { updateTicketInfoAPI } from "~/api/ticketAPI";
 import { getTripsByDateAndRouteAPI } from "~/api/tripAPI";
 import { useAuthStore } from "~/stores/authStore";
 import type { RouteNameType } from "~/types/RouteType";
@@ -29,7 +30,9 @@ import type { BookingForm, TicketType } from "~/types/TicketType";
 import ItemTicketCard from "~/components/Ticket/ItemTicketCard.vue";
 import { ref as dbRef, onValue, remove, set } from 'firebase/database'
 import { database } from '~/config/firebase'
+import { useOfficeStore } from "~/stores/officeStore";
 const authStore = useAuthStore();
+const useOffice = useOfficeStore();
 const selectedDate = ref<string>(dayjs().format("YYYY-MM-DD"));
 const selectedRoute = ref<string | null>(null);
 const routeOptions = ref<RouteNameType[]>([]);
@@ -43,6 +46,8 @@ const activeTabs = ref("1");
 const activeBookingForm = ref('1')
 const selectedTrip = ref<TripType | null>(null);
 const listItemTicket = ref<TicketType[]>([]);
+const selectedTicketsFirebase = ref<Record<string, { id: string; name: string }>>({});
+const loadingTicket = ref(false);
 
 const setToday = () => {
   selectedDate.value = dayjs().format("YYYY-MM-DD");
@@ -140,8 +145,6 @@ const handleClickSelectTabs = async (tab: TabsPaneContext, event: Event) => {
   }
 };
 
-
-
 const availableFloats = computed(() => {
   const floors = new Set<number>();
   listItemTicket.value.forEach((ticket) => floors.add(ticket.seat_floor));
@@ -162,7 +165,6 @@ const getSeatsByFloorAndRow = (floor: number, row: number): TicketType[] => {
     .sort((a, b) => a.seat_column - b.seat_column);
 };
 
-
 const formBooking = reactive<BookingForm>({
   passenger_phone: null,
   passenger_name: null,
@@ -175,7 +177,47 @@ const formBooking = reactive<BookingForm>({
   payment_method: 2,
   amount_received: null,
   selectedTickets: [],
+  creator_by_id: authStore.user?.id ?? null,
+  creator_by_name: authStore.user?.name ?? null,
+  office_id: useOffice.office ?? null,
 })
+
+const optionsPayment = [
+  { value: 1, label: 'Thanh toán trực tuyến (online)' },
+  { value: 2, label: 'Thanh toán trên xe' },
+  { value: 3, label: 'Thanh toán tại quầy' },
+  { value: 4, label: 'Chuyển khoản' },
+]
+
+const handleSubmitBookingForm = async () => {
+  if (selectedTickets.value.length === 0) {
+    ElMessage.warning("Vui lòng chọn vé trước khi đặt");
+    selectedTickets.value = [];
+    return;
+  }
+  loadingTicket.value = true;
+  formBooking.selectedTickets = selectedTickets.value;
+  console.log("Form booking data:", formBooking);
+  try {
+    const response = await updateTicketInfoAPI(formBooking);
+    if (response.result) {
+      console.log("Đặt vé thành công:", response.result);
+      ElMessage.success("Đặt vé thành công");
+    } else {
+      ElMessage.error("Có lỗi xảy ra khi đặt vé");
+    }
+  }
+  catch (error) {
+    console.error("Lỗi khi gửi dữ liệu:", error);
+    ElMessage.error("Có lỗi xảy ra khi gửi dữ liệu");
+  } finally {
+    setTimeout(() => {
+    loadingTicket.value = false;
+    selectedTickets.value = [];
+  }, 5000);
+  
+  }
+};
 
 const handleSelectTicket = (ticket: TicketType) => {
   const index = selectedTickets.value.findIndex((t) => t.id === ticket.id);
@@ -198,31 +240,10 @@ const removeTagTicket = (ticketToRemove: TicketType) => {
 };
 
 
-
-
-
-
-
-
-const optionsPayment = [
-  { value: 1, label: 'Thanh toán trực tuyến (online)' },
-  { value: 2, label: 'Thanh toán trên xe' },
-  { value: 3, label: 'Thanh toán tại quầy' },
-  { value: 4, label: 'Chuyển khoản' },
-]
-const handleSubmitBookingForm = () => {
-  if (selectedTickets.value.length === 0) {
-    ElMessage.warning("Vui lòng chọn vé trước khi đặt");
-    return;
-  }
-  formBooking.selectedTickets = selectedTickets.value;
-  console.log("Form booking data:", formBooking);
-  // Gửi dữ liệu đến API hoặc thực hiện hành động khác
-  ElMessage.success("Đặt vé thành công!");
-};
 onMounted(() => {
   fetchRouteName();
 });
+
 watch([ selectedDate, selectedRoute ], () => {
   fetchTrips();
   selectedTrip.value = null;
@@ -272,7 +293,6 @@ watch(
   { deep: true }
 );
 
-const selectedTicketsFirebase = ref<Record<string, { id: string; name: string }>>({});
 onMounted(() => {
   const ticketsRef = dbRef(database, "selectedTickets");
 
@@ -285,6 +305,7 @@ onMounted(() => {
     }
   });
 });
+
 const getSelectorName = (ticketId: string) => {
   return selectedTicketsFirebase.value[ ticketId ]?.name || null;
 };
@@ -292,10 +313,6 @@ const getSelectorName = (ticketId: string) => {
 const isSelectedByCurrentUser = (ticketId: string) => {
   return selectedTicketsFirebase.value[ ticketId ]?.id === authStore.user?.id;
 };
-const isTicketSelected = (ticketId: string) => {
-  return ticketId in selectedTicketsFirebase.value;
-};
-
 
 </script>
 <template>
@@ -405,12 +422,12 @@ const isTicketSelected = (ticketId: string) => {
         </el-collapse-item>
       </el-collapse>
       <div class="mt-1 px-4">
-        <el-button :icon="Operation" plain color="#0072bc" class="mr-2">Cập nhật</el-button>
-        <el-button :icon="Printer" class="mr-2">In phơi</el-button>
-        <el-button :icon="RefreshLeft" plain class="mr-2">Lịch sử</el-button>
-        <el-button :icon="WindPower" plain class="mr-2">Xuất bến</el-button>
-        <el-button :icon="Delete" type="danger" plain class="mr-2">Hủy chuyến</el-button>
-        <el-button :icon="Plus" plain class="mr-2">Thêm hàng</el-button>
+        <el-button :icon="Operation" plain color="#0072bc">Cập nhật</el-button>
+        <el-button :icon="Printer">In phơi</el-button>
+        <el-button :icon="RefreshLeft" plain>Lịch sử</el-button>
+        <el-button :icon="WindPower" plain>Xuất bến</el-button>
+        <el-button :icon="Delete" type="danger" plain>Hủy chuyến</el-button>
+        <el-button :icon="Plus" plain>Thêm hàng</el-button>
         <el-button :icon="Clock" plain>Đổi giờ</el-button>
       </div>
     </div>
@@ -429,16 +446,12 @@ const isTicketSelected = (ticketId: string) => {
                 <div class="space-y-4 shadow-sm bg-white h-full">
                   <div class="flex flex-col space-y-2">
                     <div v-for="row in getRows(floor)" :key="'row-' + floor + '-' + row" class="flex space-x-3">
-                      <ItemTicketCard v-for="ticket in getSeatsByFloorAndRow(floor, row)" 
-                      :key="`${ticket.id}-${selectedTickets.some(
+                      <ItemTicketCard v-for="ticket in getSeatsByFloorAndRow(floor, row)" :key="`${ticket.id}-${selectedTickets.some(
                         (t) => t.id === ticket.id
-                      )}`" 
-                      :ticket="ticket" 
-                      :is-selected="selectedTickets.some(t => t.id === ticket.id)"
-
-                      @select="handleSelectTicket" 
-                      :selector-name="getSelectorName(ticket.id.toString())"
-                      :selected-by-me="isSelectedByCurrentUser(ticket.id.toString())" />
+                      )}`" :ticket="ticket" :is-selected="selectedTickets.some(t => t.id === ticket.id)"
+                        @select="handleSelectTicket" :selector-name="getSelectorName(ticket.id.toString())"
+                        :selected-by-me="isSelectedByCurrentUser(ticket.id.toString())"
+                        :loading="loadingTicket && selectedTickets.some(t => t.id === ticket.id)" />
                     </div>
                   </div>
                 </div>
