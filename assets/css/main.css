@@ -72,6 +72,6 @@ body {
 .el-header {
     padding: 0px !important;
 }
-.el-button+.el-button {
+/* .el-button+.el-button {
     margin-left: 0px !important;
-}
+} */

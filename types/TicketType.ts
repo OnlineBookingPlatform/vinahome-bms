@@ -14,3 +14,21 @@ export interface TicketType {
   point_down: string;
   ticket_note: string;
 }
+export interface BookingForm {
+  passenger_phone: string | null;
+  passenger_name: string | null;
+  email: string | null;
+  point_up: string | null;
+  point_down: string | null;
+  note: string | null;
+  birth_date: Date | string | null;
+  gender: number | null;
+  
+  payment_method: number;
+  amount_received: number | null;
+  
+  selectedTickets: {
+    id: number;
+    seat_name: string;
+  }[];
+}

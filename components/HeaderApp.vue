@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { CaretBottom, FolderChecked } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
+import { useAuthStore } from "~/stores/authStore";
+import { useOfficeStore } from "~/stores/officeStore";
+import { useRouter } from "vue-router";
 
 const menuItems = [
   {
@@ -75,6 +79,28 @@ const menuItems = [
     items: [{ label: "Đăng ký VietQR", path: "/support/bank-registration" }],
   },
 ];
+const authStore = useAuthStore();
+const officeStore = useOfficeStore();
+const nameUser = ref("");
+const router = useRouter();
+
+
+watchEffect(() => {
+  if (authStore.user?.name) {
+    nameUser.value = authStore.user.name;
+  }
+});
+const logout = async () => {
+  try {
+    await authStore.logout();
+    officeStore.resetOffice();
+    router.push("/");
+    ElMessage.success("Đăng xuất thành công!");
+  } catch (error) {
+    ElMessage.error("Có lỗi xảy ra khi đăng xuất.");
+    console.error(error);
+  }
+};
 </script>
 <template>
   <header class="bg-[#0072bc] p-2">
@@ -136,7 +162,7 @@ const menuItems = [
       <ul class="flex space-x-6">
         <li>
           <span class="text-white text-base flex items-center mr-5"
-            >Đặng Tuấn Thành</span
+            >{{ nameUser }}</span
           >
         </li>
         <li>
@@ -276,7 +302,7 @@ const menuItems = [
                   </svg>
                   <span class="text-base mx-2">Đổi mật khẩu</span>
                 </el-dropdown-item>
-                <el-dropdown-item>
+                <el-dropdown-item @click="logout">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 512 512"
