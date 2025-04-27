@@ -14,7 +14,7 @@
     loading: boolean;
   }>();
 
-  const emit = defineEmits([ "select" ]);
+  const emit = defineEmits(["select"]);
 
   const handleClickTicket = () => {
     if (props.loading) return;
@@ -36,23 +36,24 @@
         'border-gray-300': !props.isSelected && !(props.selectorName && !props.selectedByMe),
         'opacity-50 pointer-events-none': props.loading,
       }
-    ]" @click="handleClickTicket" v-if="ticket.seat_status"
-    v-loading="props.loading">
+    ]" @click="handleClickTicket" v-if="ticket.seat_status" v-loading="props.loading">
     <div class="m-auto text-sm flex flex-col justify-center items-center"
       v-if="props.selectorName && !props.selectedByMe">
       <span>{{ props.selectorName }}</span>
     </div>
 
-    <div class="flex justify-between items-center w-full">
-      <span class="text-[#0072bc] font-semibold absolute top-1 left-1">{{
-        ticket.seat_name
-        }}</span>
-      <div class="border border-black px-2 rounded-md ml-2 min-h-2" v-if="ticket.status_booking_ticket">
-        <span class="text-black text-base font-medium">{{
-          ticket.passenger_phone
-          }}</span>
+    <div class="flex justify-between items-start w-full relative">
+      <span class="text-[#0072bc] font-semibold">
+        {{ ticket.seat_name }}
+      </span>
+
+      <div v-if="ticket.status_booking_ticket" class="border border-black px-2 rounded-md ml-2 min-h-2">
+        <span class="text-black text-base font-medium">
+          {{ ticket.passenger_phone }}
+        </span>
       </div>
     </div>
+
 
 
     <div class="text-black text-[14px] truncate font-medium" v-if="ticket.status_booking_ticket">
@@ -82,11 +83,14 @@
       <span class="text-[14px]">
         {{ new Intl.NumberFormat("vi-VN").format(ticket.base_price) }}
       </span>
-      <span class="text-[14px] font-medium">TTTX</span>
+      <span v-if="ticket.payment_method === 1" class="text-[14px] font-medium">Online</span>
+      <span v-else-if="ticket.payment_method === 2" class="text-[14px] font-medium">TTTX</span>
+      <span v-else-if="ticket.payment_method === 3" class="text-[14px] font-medium">TTTQ</span>
+      <span v-else-if="ticket.payment_method === 4" class="text-[14px] font-medium">CK</span>
     </div>
     <div class="w-full h-[5px] bg-[#0072bc] rounded-3xl" v-if="ticket.status_booking_ticket"></div>
     <div class="flex justify-between items-center mt-[1px]" v-if="ticket.status_booking_ticket">
-      <span class="text-[12px]">B: Đặng Tuấn Thành / VP An Sương</span>
+      <span class="text-[12px]">B: {{ ticket.creator_by_name }}</span>
       <span class="text-[12px]"></span>
     </div>
   </div>

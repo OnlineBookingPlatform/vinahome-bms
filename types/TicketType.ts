@@ -13,6 +13,8 @@ export interface TicketType {
   point_up: string;
   point_down: string;
   ticket_note: string;
+  creator_by_name: string;
+  payment_method: number;
 }
 export interface BookingForm {
   passenger_phone: string | null;
