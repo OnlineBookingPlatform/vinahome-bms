@@ -81,7 +81,7 @@
     </div>
     <div class="flex justify-between items-center mt-[1px]" v-if="ticket.status_booking_ticket">
       <span class="text-[14px]">
-        {{ new Intl.NumberFormat("vi-VN").format(ticket.base_price) }}
+        {{ new Intl.NumberFormat("vi-VN").format(ticket.money_paid) }} / {{ new Intl.NumberFormat("vi-VN").format(ticket.base_price) }}
       </span>
       <span v-if="ticket.payment_method === 1" class="text-[14px] font-medium">Online</span>
       <span v-else-if="ticket.payment_method === 2" class="text-[14px] font-medium">TTTX</span>

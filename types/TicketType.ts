@@ -15,6 +15,8 @@ export interface TicketType {
   ticket_note: string;
   creator_by_name: string;
   payment_method: number;
+  money_paid: number;
+
 }
 export interface BookingForm {
   passenger_phone: string | null;
